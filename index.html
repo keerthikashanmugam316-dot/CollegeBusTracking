@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>ESP32 GPS Tracker</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.2.0.min.js"></script>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <style>
+    #map { height: 100vh; width: 100%; }
+  </style>
+</head>
+<body>
+  <h2>ESP32 GPS Tracker</h2>
+  <div id="map"></div>
+
+  <script>
+    // Initialize map
+    const map = L.map('map').setView([0, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    let marker = null;
+
+    // Init PubNub
+    const pubnub = new PubNub({
+      publishKey: "pub-c-22455360-b77d-4329-9b8d-b824d95df477",
+      subscribeKey: "sub-c-c09074cc-06a3-4f5c-9a5e-c68d7b82ef19",
+      uuid: "webClient"
+    });
+
+    pubnub.subscribe({ channels: ['gps-tracker'] });
+
+    pubnub.addListener({
+      message: function(event) {
+        const data = event.message;
+        console.log("GPS:", data);
+
+        if (data.lat && data.lng) {
+          if (!marker) {
+            marker = L.marker([data.lat, data.lng]).addTo(map);
+          } else {
+            marker.setLatLng([data.lat, data.lng]);
+          }
+          map.setView([data.lat, data.lng], 15);
+        }
+      }
+    });
+  </script>
+</body>
+</html>
