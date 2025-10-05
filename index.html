@@ -30,7 +30,7 @@
       uuid: "webClient"
     });
 
-    pubnub.subscribe({ channels: ['gps-tracker'] });
+    pubnub.subscribe({ channels: ['KCGBusTracking'] });
 
     pubnub.addListener({
       message: function(event) {
@@ -50,3 +50,4 @@
   </script>
 </body>
 </html>
+
