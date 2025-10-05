@@ -2,52 +2,724 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>ESP32 GPS Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KCG College Bus Tracker</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.2.0.min.js"></script>
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <style>
-    #map { height: 100vh; width: 100%; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f5f5;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 1rem 2rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .header h1 {
+      font-size: 1.8rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .header p {
+      opacity: 0.9;
+      font-size: 0.9rem;
+    }
+
+    .container {
+      display: flex;
+      height: calc(100vh - 100px);
+      gap: 1rem;
+      padding: 1rem;
+    }
+
+    .sidebar {
+      width: 350px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      overflow-y: auto;
+      padding: 1.5rem;
+    }
+
+    .map-container {
+      flex: 1;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+
+    .section {
+      margin-bottom: 1.5rem;
+    }
+
+    .section h2 {
+      font-size: 1.1rem;
+      color: #333;
+      margin-bottom: 0.8rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid #667eea;
+    }
+
+    .status-card {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 0.8rem;
+      border-left: 4px solid #667eea;
+    }
+
+    .status-card.good {
+      border-left-color: #10b981;
+    }
+
+    .status-card.warning {
+      border-left-color: #f59e0b;
+    }
+
+    .status-card.error {
+      border-left-color: #ef4444;
+    }
+
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 0.5rem 0;
+      font-size: 0.9rem;
+    }
+
+    .status-label {
+      color: #666;
+      font-weight: 500;
+    }
+
+    .status-value {
+      color: #333;
+      font-weight: 600;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 0.7rem;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 0.5rem;
+      transition: all 0.3s;
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+      background: #6b7280;
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background: #4b5563;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    .input-group {
+      margin-bottom: 1rem;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 0.3rem;
+      font-weight: 500;
+    }
+
+    .input-group input,
+    .input-group select {
+      width: 100%;
+      padding: 0.6rem;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.3rem 0.7rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .badge-success {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .badge-warning {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge-error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .badge-info {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .activity-log {
+      max-height: 200px;
+      overflow-y: auto;
+      background: #f8f9fa;
+      border-radius: 6px;
+      padding: 0.8rem;
+    }
+
+    .log-entry {
+      font-size: 0.8rem;
+      padding: 0.4rem 0;
+      border-bottom: 1px solid #e5e7eb;
+      color: #4b5563;
+    }
+
+    .log-entry:last-child {
+      border-bottom: none;
+    }
+
+    .log-time {
+      color: #9ca3af;
+      font-size: 0.75rem;
+    }
+
+    .signal-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0.5rem 0;
+    }
+
+    .signal-bars {
+      display: flex;
+      gap: 2px;
+      align-items: flex-end;
+    }
+
+    .signal-bar {
+      width: 4px;
+      background: #d1d5db;
+      border-radius: 2px;
+    }
+
+    .signal-bar.active {
+      background: #10b981;
+    }
+
+    .signal-bar:nth-child(1) { height: 8px; }
+    .signal-bar:nth-child(2) { height: 12px; }
+    .signal-bar:nth-child(3) { height: 16px; }
+    .signal-bar:nth-child(4) { height: 20px; }
+
+    .connection-status {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      background: white;
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column;
+      }
+      
+      .sidebar {
+        width: 100%;
+        max-height: 50vh;
+      }
+    }
+
+    /* Custom marker pulse animation */
+    @keyframes pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7);
+      }
+      70% {
+        box-shadow: 0 0 0 10px rgba(102, 126, 234, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(102, 126, 234, 0);
+      }
+    }
   </style>
 </head>
 <body>
-  <h2>ESP32 GPS Tracker</h2>
-  <div id="map"></div>
+  <div class="header">
+    <h1>🚌 KCG College Bus Tracker</h1>
+    <p>Real-time GPS tracking with IoT monitoring</p>
+  </div>
+
+  <div class="container">
+    <div class="sidebar">
+      <!-- Bus Status Section -->
+      <div class="section">
+        <h2>🚍 Bus Status</h2>
+        <div id="busStatus" class="status-card">
+          <div class="status-row">
+            <span class="status-label">Connection:</span>
+            <span class="status-value" id="connectionStatus">
+              <span class="badge badge-warning">Connecting...</span>
+            </span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">GPS Signal:</span>
+            <span class="status-value" id="gpsSignal">
+              <span class="badge badge-warning">Waiting...</span>
+            </span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Last Update:</span>
+            <span class="status-value" id="lastUpdate">Never</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Location Details Section -->
+      <div class="section">
+        <h2>📍 Location Details</h2>
+        <div class="status-card">
+          <div class="status-row">
+            <span class="status-label">Latitude:</span>
+            <span class="status-value" id="latitude">--</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Longitude:</span>
+            <span class="status-value" id="longitude">--</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Speed:</span>
+            <span class="status-value" id="speed">-- km/h</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Altitude:</span>
+            <span class="status-value" id="altitude">-- m</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Course:</span>
+            <span class="status-value" id="course">--°</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- GPS Details Section -->
+      <div class="section">
+        <h2>🛰️ GPS Details</h2>
+        <div class="status-card">
+          <div class="status-row">
+            <span class="status-label">Satellites:</span>
+            <span class="status-value" id="satellites">0</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">HDOP:</span>
+            <span class="status-value" id="hdop">--</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">GPS Time:</span>
+            <span class="status-value" id="gpsTime">--</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- System Info Section -->
+      <div class="section">
+        <h2>⚙️ System Info</h2>
+        <div class="status-card">
+          <div class="status-row">
+            <span class="status-label">WiFi SSID:</span>
+            <span class="status-value" id="wifiSSID">--</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Signal Strength:</span>
+            <span class="status-value">
+              <div class="signal-indicator">
+                <div class="signal-bars" id="wifiSignalBars">
+                  <div class="signal-bar"></div>
+                  <div class="signal-bar"></div>
+                  <div class="signal-bar"></div>
+                  <div class="signal-bar"></div>
+                </div>
+                <span id="wifiRSSI">-- dBm</span>
+              </div>
+            </span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">IP Address:</span>
+            <span class="status-value" id="ipAddress">--</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Uptime:</span>
+            <span class="status-value" id="uptime">--</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Free Memory:</span>
+            <span class="status-value" id="freeHeap">--</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Control Panel Section -->
+      <div class="section">
+        <h2>🎛️ Control Panel</h2>
+        <button class="btn btn-primary" onclick="requestStatus()">🔄 Refresh Status</button>
+        
+        <div class="input-group">
+          <label>Update Interval (seconds):</label>
+          <select id="intervalSelect" onchange="updateInterval()">
+            <option value="1000">1 second</option>
+            <option value="2000" selected>2 seconds</option>
+            <option value="5000">5 seconds</option>
+            <option value="10000">10 seconds</option>
+            <option value="30000">30 seconds</option>
+          </select>
+        </div>
+
+        <button class="btn btn-secondary" onclick="toggleDebug()">🐛 Toggle Debug Mode</button>
+        <button class="btn btn-danger" onclick="restartDevice()">🔌 Restart Device</button>
+      </div>
+
+      <!-- Activity Log Section -->
+      <div class="section">
+        <h2>📋 Activity Log</h2>
+        <div class="activity-log" id="activityLog">
+          <div class="log-entry">System initialized...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="map-container">
+      <div class="connection-status" id="mapConnectionStatus">
+        <span class="badge badge-warning">Connecting...</span>
+      </div>
+      <div id="map"></div>
+    </div>
+  </div>
 
   <script>
     // Initialize map
-    const map = L.map('map').setView([0, 0], 2);
+    const map = L.map('map').setView([13.0827, 80.2707], 13); // Chennai coordinates as default
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
     let marker = null;
+    let polyline = null;
+    let pathCoordinates = [];
+    let lastGPSUpdate = null;
 
-    // Init PubNub
+    // Custom icon for the bus
+    const busIcon = L.divIcon({
+      className: 'custom-bus-icon',
+      html: '<div style="background: #667eea; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); animation: pulse 2s infinite;">🚌</div>',
+      iconSize: [40, 40],
+      iconAnchor: [20, 20]
+    });
+
+    // Initialize PubNub
     const pubnub = new PubNub({
       publishKey: "pub-c-22455360-b77d-4329-9b8d-b824d95df477",
       subscribeKey: "sub-c-c09074cc-06a3-4f5c-9a5e-c68d7b82ef19",
-      uuid: "webClient"
+      uuid: "webClient-" + Math.random().toString(36).substr(2, 9)
     });
 
-    pubnub.subscribe({ channels: ['KCGBusTracking'] });
+    // Subscribe to channels
+    pubnub.subscribe({ 
+      channels: ['KCGBusTracking', 'KCGBusCommands'] 
+    });
 
     pubnub.addListener({
+      status: function(statusEvent) {
+        if (statusEvent.category === "PNConnectedCategory") {
+          updateConnectionStatus(true);
+          addLog("Connected to tracking server");
+        }
+      },
       message: function(event) {
         const data = event.message;
-        console.log("GPS:", data);
+        console.log("Received:", data);
 
-        if (data.lat && data.lng) {
-          if (!marker) {
-            marker = L.marker([data.lat, data.lng]).addTo(map);
-          } else {
-            marker.setLatLng([data.lat, data.lng]);
-          }
-          map.setView([data.lat, data.lng], 15);
+        if (data.type === 'gps') {
+          handleGPSData(data);
+        } else if (data.type === 'status') {
+          handleStatusData(data);
         }
       }
     });
+
+    function handleGPSData(data) {
+      lastGPSUpdate = new Date();
+      document.getElementById('lastUpdate').textContent = formatTime(lastGPSUpdate);
+
+      if (data.signal === 'good' && data.lat && data.lng) {
+        // Update GPS signal status
+        document.getElementById('gpsSignal').innerHTML = '<span class="badge badge-success">Good Signal</span>';
+        
+        // Update location details
+        document.getElementById('latitude').textContent = data.lat.toFixed(6);
+        document.getElementById('longitude').textContent = data.lng.toFixed(6);
+        document.getElementById('speed').textContent = (data.speed || 0).toFixed(1) + ' km/h';
+        document.getElementById('altitude').textContent = (data.altitude || 0).toFixed(1) + ' m';
+        document.getElementById('course').textContent = (data.course || 0).toFixed(1) + '°';
+        
+        // Update GPS details
+        document.getElementById('satellites').textContent = data.satellites || 0;
+        document.getElementById('hdop').textContent = data.hdop ? data.hdop.toFixed(2) : '--';
+        
+        if (data.date && data.time) {
+          document.getElementById('gpsTime').textContent = data.time + ' ' + data.date;
+        }
+
+        // Update map marker
+        const latlng = [data.lat, data.lng];
+        if (!marker) {
+          marker = L.marker(latlng, { icon: busIcon }).addTo(map);
+          marker.bindPopup('<b>KCG College Bus</b><br>Speed: ' + (data.speed || 0).toFixed(1) + ' km/h');
+          map.setView(latlng, 15);
+        } else {
+          marker.setLatLng(latlng);
+          marker.getPopup().setContent('<b>KCG College Bus</b><br>Speed: ' + (data.speed || 0).toFixed(1) + ' km/h');
+          map.panTo(latlng);
+        }
+
+        // Add to path
+        pathCoordinates.push(latlng);
+        if (pathCoordinates.length > 100) {
+          pathCoordinates.shift();
+        }
+
+        if (polyline) {
+          map.removeLayer(polyline);
+        }
+        polyline = L.polyline(pathCoordinates, {
+          color: '#667eea',
+          weight: 3,
+          opacity: 0.7
+        }).addTo(map);
+
+        addLog(`GPS updated: ${data.lat.toFixed(4)}, ${data.lng.toFixed(4)} @ ${data.speed.toFixed(1)} km/h`);
+      } else {
+        document.getElementById('gpsSignal').innerHTML = '<span class="badge badge-error">No Signal</span>';
+        addLog('GPS signal lost - searching for satellites...');
+      }
+    }
+
+    function handleStatusData(data) {
+      addLog(`Status: ${data.message}`);
+
+      // Update WiFi info
+      if (data.wifi) {
+        document.getElementById('wifiSSID').textContent = data.wifi.ssid || '--';
+        document.getElementById('ipAddress').textContent = data.wifi.ip || '--';
+        
+        const rssi = data.wifi.rssi;
+        document.getElementById('wifiRSSI').textContent = rssi + ' dBm';
+        
+        // Update signal bars
+        const bars = document.querySelectorAll('.signal-bar');
+        bars.forEach((bar, index) => {
+          bar.classList.remove('active');
+          if (rssi > -50 && index < 4) bar.classList.add('active');
+          else if (rssi > -60 && index < 3) bar.classList.add('active');
+          else if (rssi > -70 && index < 2) bar.classList.add('active');
+          else if (rssi > -80 && index < 1) bar.classList.add('active');
+        });
+      }
+
+      // Update GPS info
+      if (data.gps) {
+        document.getElementById('satellites').textContent = data.gps.satellites || 0;
+        if (data.gps.hdop) {
+          document.getElementById('hdop').textContent = data.gps.hdop.toFixed(2);
+        }
+      }
+
+      // Update system stats
+      if (data.stats) {
+        document.getElementById('uptime').textContent = formatUptime(data.stats.uptime);
+        document.getElementById('freeHeap').textContent = formatBytes(data.stats.freeHeap);
+      }
+    }
+
+    function updateConnectionStatus(connected) {
+      const statusEl = document.getElementById('connectionStatus');
+      const mapStatusEl = document.getElementById('mapConnectionStatus');
+      
+      if (connected) {
+        statusEl.innerHTML = '<span class="badge badge-success">Connected</span>';
+        mapStatusEl.innerHTML = '<span class="badge badge-success">● Live</span>';
+      } else {
+        statusEl.innerHTML = '<span class="badge badge-error">Disconnected</span>';
+        mapStatusEl.innerHTML = '<span class="badge badge-error">● Offline</span>';
+      }
+    }
+
+    function requestStatus() {
+      const message = {
+        command: "getStatus",
+        timestamp: Date.now()
+      };
+      
+      pubnub.publish({
+        channel: 'KCGBusCommands',
+        message: message
+      }, function(status, response) {
+        if (status.error) {
+          addLog('Failed to send status request');
+        } else {
+          addLog('Status request sent');
+        }
+      });
+    }
+
+    function updateInterval() {
+      const interval = document.getElementById('intervalSelect').value;
+      const message = {
+        command: "setInterval",
+        value: parseInt(interval),
+        timestamp: Date.now()
+      };
+      
+      pubnub.publish({
+        channel: 'KCGBusCommands',
+        message: message
+      }, function(status, response) {
+        if (!status.error) {
+          addLog(`Update interval changed to ${interval/1000}s`);
+        }
+      });
+    }
+
+    function toggleDebug() {
+      const message = {
+        command: "setDebug",
+        value: true,
+        timestamp: Date.now()
+      };
+      
+      pubnub.publish({
+        channel: 'KCGBusCommands',
+        message: message
+      }, function(status, response) {
+        if (!status.error) {
+          addLog('Debug mode toggled');
+        }
+      });
+    }
+
+    function restartDevice() {
+      if (confirm('Are you sure you want to restart the device?')) {
+        const message = {
+          command: "restart",
+          timestamp: Date.now()
+        };
+        
+        pubnub.publish({
+          channel: 'KCGBusCommands',
+          message: message
+        }, function(status, response) {
+          if (!status.error) {
+            addLog('Device restart command sent');
+          }
+        });
+      }
+    }
+
+    function addLog(message) {
+      const logContainer = document.getElementById('activityLog');
+      const logEntry = document.createElement('div');
+      logEntry.className = 'log-entry';
+      
+      const now = new Date();
+      logEntry.innerHTML = `<span class="log-time">${formatTime(now)}</span> ${message}`;
+      
+      logContainer.insertBefore(logEntry, logContainer.firstChild);
+      
+      // Keep only last 50 entries
+      while (logContainer.children.length > 50) {
+        logContainer.removeChild(logContainer.lastChild);
+      }
+    }
+
+    function formatTime(date) {
+      return date.toLocaleTimeString('en-IN', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    }
+
+    function formatUptime(seconds) {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      return `${hours}h ${minutes}m`;
+    }
+
+    function formatBytes(bytes) {
+      return (bytes / 1024).toFixed(1) + ' KB';
+    }
+
+    // Check for stale data
+    setInterval(() => {
+      if (lastGPSUpdate) {
+        const timeSinceUpdate = (Date.now() - lastGPSUpdate) / 1000;
+        if (timeSinceUpdate > 30) {
+          document.getElementById('gpsSignal').innerHTML = '<span class="badge badge-warning">Stale Data</span>';
+        }
+      }
+    }, 5000);
+
+    // Initial status request after 2 seconds
+    setTimeout(requestStatus, 2000);
   </script>
 </body>
 </html>
-
