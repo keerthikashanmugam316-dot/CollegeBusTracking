@@ -280,6 +280,7 @@
       }
     }
 
+    /* Custom marker pulse animation */
     @keyframes pulse {
       0% {
         box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7);
@@ -445,19 +446,8 @@
   </div>
 
   <script>
-    // ============================================
-    // CONFIGURATION - Replace with your token
-    // ============================================
-    const PUBNUB_CONFIG = {
-      publishKey: "pub-c-22455360-b77d-4329-9b8d-b824d95df477",
-      subscribeKey: "sub-c-c09074cc-06a3-4f5c-9a5e-c68d7b82ef19",
-      // Replace this with the token you generated from Flask
-      authKey: "sec-c-YWIxNDdmOGItMTMzNS00YmMyLTg1OTgtOWQ2NmU3ZmNjNDg2",
-      uuid: "webClient-" + Math.random().toString(36).substr(2, 9)
-    };
-
     // Initialize map
-    const map = L.map('map').setView([13.0827, 80.2707], 13);
+    const map = L.map('map').setView([13.0827, 80.2707], 13); // Chennai coordinates as default
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
@@ -475,12 +465,11 @@
       iconAnchor: [20, 20]
     });
 
-    // Initialize PubNub with static token
+    // Initialize PubNub
     const pubnub = new PubNub({
-      publishKey: PUBNUB_CONFIG.publishKey,
-      subscribeKey: PUBNUB_CONFIG.subscribeKey,
-      authKey: PUBNUB_CONFIG.authKey,
-      uuid: PUBNUB_CONFIG.uuid
+      publishKey: "pub-c-c03e38f2-057a-4f94-bd10-b9db905b6fea",
+      subscribeKey: "sub-c-133f725b-c46a-47dd-b793-8e253dbfa1c0",
+      uuid: "webClient-" + Math.random().toString(36).substr(2, 9)
     });
 
     // Subscribe to channels
@@ -492,13 +481,7 @@
       status: function(statusEvent) {
         if (statusEvent.category === "PNConnectedCategory") {
           updateConnectionStatus(true);
-          addLog("Connected to tracking server with authentication");
-        } else if (statusEvent.category === "PNNetworkDownCategory") {
-          updateConnectionStatus(false);
-          addLog("Network connection lost");
-        } else if (statusEvent.category === "PNReconnectedCategory") {
-          updateConnectionStatus(true);
-          addLog("Reconnected to tracking server");
+          addLog("Connected to tracking server");
         }
       },
       message: function(event) {
@@ -518,14 +501,17 @@
       document.getElementById('lastUpdate').textContent = formatTime(lastGPSUpdate);
 
       if (data.signal === 'good' && data.lat && data.lng) {
+        // Update GPS signal status
         document.getElementById('gpsSignal').innerHTML = '<span class="badge badge-success">Good Signal</span>';
         
+        // Update location details
         document.getElementById('latitude').textContent = data.lat.toFixed(6);
         document.getElementById('longitude').textContent = data.lng.toFixed(6);
         document.getElementById('speed').textContent = (data.speed || 0).toFixed(1) + ' km/h';
         document.getElementById('altitude').textContent = (data.altitude || 0).toFixed(1) + ' m';
         document.getElementById('course').textContent = (data.course || 0).toFixed(1) + '°';
         
+        // Update GPS details
         document.getElementById('satellites').textContent = data.satellites || 0;
         document.getElementById('hdop').textContent = data.hdop ? data.hdop.toFixed(2) : '--';
         
@@ -533,6 +519,7 @@
           document.getElementById('gpsTime').textContent = data.time + ' ' + data.date;
         }
 
+        // Update map marker
         const latlng = [data.lat, data.lng];
         if (!marker) {
           marker = L.marker(latlng, { icon: busIcon }).addTo(map);
@@ -544,6 +531,7 @@
           map.panTo(latlng);
         }
 
+        // Add to path
         pathCoordinates.push(latlng);
         if (pathCoordinates.length > 100) {
           pathCoordinates.shift();
@@ -568,6 +556,7 @@
     function handleStatusData(data) {
       addLog(`Status: ${data.message}`);
 
+      // Update WiFi info
       if (data.wifi) {
         document.getElementById('wifiSSID').textContent = data.wifi.ssid || '--';
         document.getElementById('ipAddress').textContent = data.wifi.ip || '--';
@@ -575,6 +564,7 @@
         const rssi = data.wifi.rssi;
         document.getElementById('wifiRSSI').textContent = rssi + ' dBm';
         
+        // Update signal bars
         const bars = document.querySelectorAll('.signal-bar');
         bars.forEach((bar, index) => {
           bar.classList.remove('active');
@@ -585,6 +575,7 @@
         });
       }
 
+      // Update GPS info
       if (data.gps) {
         document.getElementById('satellites').textContent = data.gps.satellites || 0;
         if (data.gps.hdop) {
@@ -592,6 +583,7 @@
         }
       }
 
+      // Update system stats
       if (data.stats) {
         document.getElementById('uptime').textContent = formatUptime(data.stats.uptime);
         document.getElementById('freeHeap').textContent = formatBytes(data.stats.freeHeap);
@@ -692,6 +684,7 @@
       
       logContainer.insertBefore(logEntry, logContainer.firstChild);
       
+      // Keep only last 50 entries
       while (logContainer.children.length > 50) {
         logContainer.removeChild(logContainer.lastChild);
       }
@@ -715,6 +708,7 @@
       return (bytes / 1024).toFixed(1) + ' KB';
     }
 
+    // Check for stale data
     setInterval(() => {
       if (lastGPSUpdate) {
         const timeSinceUpdate = (Date.now() - lastGPSUpdate) / 1000;
@@ -724,6 +718,7 @@
       }
     }, 5000);
 
+    // Initial status request after 2 seconds
     setTimeout(requestStatus, 2000);
   </script>
 </body>
