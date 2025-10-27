@@ -447,7 +447,7 @@
 
   <script>
     // Initialize map
-    const map = L.map('map').setView([13.0827, 80.2707], 13); // Chennai coordinates as default
+    const map = L.map('map').setView([12.9229, 80.1275], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
@@ -474,27 +474,34 @@
 
     // Subscribe to channels
     pubnub.subscribe({ 
-      channels: ['KCGBusTracking', 'KCGBusCommands'] 
+      channels: ['KCGBusTracking'] 
     });
 
-    pubnub.addListener({
-      status: function(statusEvent) {
-        if (statusEvent.category === "PNConnectedCategory") {
-          updateConnectionStatus(true);
-          addLog("Connected to tracking server");
-        }
-      },
+   pubnub.addListener({
       message: function(event) {
-        const data = event.message;
-        console.log("Received:", data);
+        console.log("Received:", event.message);
 
-        if (data.type === 'gps') {
-          handleGPSData(data);
-        } else if (data.type === 'status') {
-          handleStatusData(data);
+        let data = event.message;
+        if (typeof data === "string") {
+          try {
+            data = JSON.parse(data);
+          } catch (e) {
+            console.warn("Invalid JSON:", data);
+            return;
+          }
+        }
+
+        if (data.lat && data.lon) {
+          const newLatLng = L.latLng(data.lat, data.lon);
+          marker.setLatLng(newLatLng);
+          map.panTo(newLatLng);
+          console.log("Updated location:", data.lat, data.lon);
+        } else {
+          console.warn("Missing lat/lon:", data);
         }
       }
     });
+
 
     function handleGPSData(data) {
       lastGPSUpdate = new Date();
@@ -723,4 +730,5 @@
   </script>
 </body>
 </html>
+
 
