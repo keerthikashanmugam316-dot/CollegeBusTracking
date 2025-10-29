@@ -1,7 +1,109 @@
+Arduino Code :- 
+
+#include <WiFi.h>
+#include <HTTPClient.h>
+
+// WiFi credentials
+const char* ssid = "WIFI-USERNAME"; 
+const char* password = "WIFI-PASSWORD";
+
+// PubNub keys
+String pubKey = "ur key";
+String subKey = "ur key;
+String channel = "channel name";
+
+
+float route[][2] = {
+  {12.922915, 80.127457},  // Tambaram
+  {12.925980, 80.133910},  // Selaiyur
+  {12.928760, 80.139800},  // Camp Road
+  {12.931960, 80.147300},  // Sembakkam
+  {12.935480, 80.153800},  // Medavakkam Junction
+  {12.939820, 80.160650},  // Pallikaranai Marsh start
+  {12.944390, 80.169050},  // Near VGP Layout
+  {12.948850, 80.176800},  // Thoraipakkam
+  {12.953630, 80.184420},  // OMR Main Road entry
+  {12.956870, 80.189250},  // Cognizant / Thoraipakkam Junction
+  {12.960050, 80.194250},  // Sholinganallur Signal
+  {12.962200, 80.198400},  // Elcot SEZ Road
+  {12.965400, 80.202500},  // Elcot Phase II
+  {12.968500, 80.206700},  // Near KCG College Junction
+  {12.969930, 80.209270}   // KCG College of Technology (Final)
+};
+
+int totalPoints = sizeof(route) / sizeof(route[0]);
+int currentPoint = 0;
+
+void setup() {
+  Serial.begin(115200);
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting to WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\n✅ Connected to WiFi!");
+}
+
+void loop() {
+  if (WiFi.status() == WL_CONNECTED) {
+    float lat = route[currentPoint][0];
+    float lon = route[currentPoint][1];
+    sendToPubNub(lat, lon);
+
+    Serial.print("Sent point ");
+    Serial.print(currentPoint + 1);
+    Serial.print("/");
+    Serial.println(totalPoints);
+
+    // Move to next point
+    currentPoint++;
+    if (currentPoint >= totalPoints) currentPoint = 0; // Loop route
+  } else {
+    Serial.println("⚠️ WiFi disconnected, reconnecting...");
+    WiFi.reconnect();
+  }
+
+  delay(5000); 
+}
+
+void sendToPubNub(float lat, float lon) {
+  if (WiFi.status() != WL_CONNECTED) return;
+
+  HTTPClient http;
+
+  String url = "https://ps.pndsn.com/publish/" + String(pubKey) + "/" + String(subKey) + "/0/" + String(channel) + "/0";
+
+
+  String payload = "{\"lat\":" + String(lat, 6) + ",\"lon\":" + String(lon, 6) + "}";
+
+  Serial.println("📤 Sending to PubNub...");
+  Serial.println("URL: " + url);
+  Serial.println("Payload: " + payload);
+
+  http.begin(url);
+  http.addHeader("Content-Type", "application/json");
+
+  int httpCode = http.POST(payload);
+
+  if (httpCode > 0) {
+    Serial.printf("✅ HTTP Response code: %d\n", httpCode);
+    String response = http.getString();
+    Serial.println("Response: " + response);
+  } else {
+    Serial.printf("❌ HTTP Error: %s\n", http.errorToString(httpCode).c_str());
+  }
+
+  http.end();
+}
+
+
+Index Page :-
+
 <!DOCTYPE html>
 <html>
 <head>
-  <title>KCG College Bus Tracker</title>
+  <title>College Bus Tracker</title>
   <meta charset="utf-8" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -28,12 +130,12 @@
 
    
     const pubnub = new PubNub({
-      publishKey: 'pub-c-22455360-b77d-4329-9b8d-b824d95df477',
-      subscribeKey: 'sub-c-c09074cc-06a3-4f5c-9a5e-c68d7b82ef19',
+      publishKey: 'ur key',
+      subscribeKey: 'ur key',
       uuid: 'dashboard-client'
     });
 
-    pubnub.subscribe({ channels: ['KCGBusTracking'] });
+    pubnub.subscribe({ channels: ['channel-name'] });
 
   
     pubnub.addListener({
@@ -62,5 +164,4 @@
     });
   </script>
 </body>
-</html
-
+</html>
